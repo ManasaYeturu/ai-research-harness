@@ -1,13 +1,6 @@
 import psycopg
 
-
-DATABASE_URL = (
-    "host=localhost "
-    "port=5432 "
-    "dbname=ai_research_harness "
-    "user=postgres "
-    "password=1620"
-)
+from backend.app.config import DATABASE_URL
 
 
 def get_connection():
