@@ -4,6 +4,8 @@ from backend.app.rag.search import (
     search_similar_chunks,
     calculate_term_coverage,
     is_content_relevant,
+    extract_keywords,
+    has_lexical_relevance,
 )
 
 
@@ -13,6 +15,7 @@ def test_relevant_postgresql_query_returns_results():
     )
 
     assert results
+
     assert any(
         result["source"] == "postgres.md"
         for result in results
@@ -74,6 +77,14 @@ def test_invalid_top_k_is_rejected():
         )
 
 
+def test_negative_top_k_is_rejected():
+    with pytest.raises(ValueError):
+        search_similar_chunks(
+            "What is PostgreSQL?",
+            top_k=-1
+        )
+
+
 def test_invalid_score_threshold_is_rejected():
     with pytest.raises(ValueError):
         search_similar_chunks(
@@ -123,8 +134,6 @@ def test_top_k_limits_final_results():
 
 
 def test_extract_keywords_removes_stop_words():
-    from backend.app.rag.search import extract_keywords
-
     keywords = extract_keywords(
         "What is a primary key?"
     )
@@ -134,18 +143,41 @@ def test_extract_keywords_removes_stop_words():
     assert "primary" in keywords
     assert "key" in keywords
 
-def test_lexical_relevance_detects_matching_content():
-    from backend.app.rag.search import has_lexical_relevance
 
+def test_lexical_relevance_detects_matching_content():
     assert has_lexical_relevance(
         "What is a primary key?",
         "A primary key uniquely identifies each row in a table."
     )
 
-def test_lexical_relevance_rejects_unrelated_content():
-    from backend.app.rag.search import has_lexical_relevance
 
+def test_lexical_relevance_rejects_unrelated_content():
     assert not has_lexical_relevance(
         "What is quantum computing?",
         "PostgreSQL is an open-source object-relational database."
+    )
+
+
+def test_score_threshold_boundary_zero_is_valid():
+    results = search_similar_chunks(
+        "What is PostgreSQL?",
+        score_threshold=0
+    )
+
+    assert results
+
+
+def test_score_threshold_boundary_one_is_valid():
+    results = search_similar_chunks(
+        "What is PostgreSQL?",
+        score_threshold=1
+    )
+
+    assert results == []
+
+
+def test_query_without_meaningful_terms_is_not_relevant():
+    assert not is_content_relevant(
+        "what is a",
+        "PostgreSQL is a relational database."
     )

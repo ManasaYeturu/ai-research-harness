@@ -43,3 +43,14 @@ def test_multiple_traces_have_unique_ids():
     trace_two = tracer.start_trace()
 
     assert trace_one.run_id != trace_two.run_id
+
+
+def test_multiple_traces_are_stored_independently():
+
+    tracer = Tracer()
+
+    trace_one = tracer.start_trace()
+    trace_two = tracer.start_trace()
+
+    assert tracer.get_trace(trace_one.run_id) is trace_one
+    assert tracer.get_trace(trace_two.run_id) is trace_two

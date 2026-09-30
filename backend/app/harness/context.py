@@ -34,9 +34,16 @@ def _is_valid_tool_pair(messages, index):
     if not isinstance(next_message, ToolMessage):
         return False
 
-    return True
+    tool_call_ids = {
+        tool_call.get("id")
+        for tool_call in message.tool_calls
+        if isinstance(tool_call, dict)
+    }
 
+    if not tool_call_ids:
+        return False
 
+    return next_message.tool_call_id in tool_call_ids
 def _remove_incomplete_tool_pairs(messages):
     """
     Remove messages that would create incomplete tool
@@ -98,10 +105,10 @@ def limit_context(messages):
     while preserving valid tool-call relationships.
     """
 
-    if len(messages) <= MAX_CONTEXT_MESSAGES:
-        return messages
-
-    controlled_messages = messages[-MAX_CONTEXT_MESSAGES:]
+    if len(messages) > MAX_CONTEXT_MESSAGES:
+        controlled_messages = messages[-MAX_CONTEXT_MESSAGES:]
+    else:
+        controlled_messages = list(messages)
 
     controlled_messages = _remove_incomplete_tool_pairs(
         controlled_messages
