@@ -180,6 +180,14 @@ jobs:
       # 13. Run automated tests
       # --------------------------------------------------
 
-      - name: Run automated tests
+           - name: Run automated tests
         run: |
           python -m pytest -q
+
+      # --------------------------------------------------
+      # 14. Run AI evaluation gate
+      # --------------------------------------------------
+
+      - name: Run AI evaluation gate
+        run: |
+          python -m backend.app.evaluation.run_evaluation datasets/rag_tasks.jsonl
