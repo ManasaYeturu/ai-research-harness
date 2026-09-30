@@ -1,37 +1,56 @@
-from langchain_core.messages import HumanMessage
+from langchain_core.messages import HumanMessage, AIMessage
 from langchain_ollama import ChatOllama
 
 from backend.app.tools.calculator import calculator
 
 
-llm = ChatOllama(
-    model="llama3.2:3b",
-    temperature=0
+from backend.app.agent.graph import (
+    build_graph,
+    llm_with_tools,
+    SYSTEM_PROMPT
 )
 
-llm_with_tools = llm.bind_tools([calculator])
 
+def test_llm_selects_calculator_for_arithmetic_question():
+    llm = ChatOllama(
+        model="llama3.2:3b",
+        temperature=0
+    )
 
-questions = [
-    "What is 125 * 37?",
-    "What is PostgreSQL?"
-]
-
-
-for question in questions:
-
-    print("\n" + "=" * 60)
-    print("QUESTION:")
-    print(question)
+    llm_with_tools = llm.bind_tools(
+        [calculator]
+    )
 
     response = llm_with_tools.invoke(
         [
-            HumanMessage(content=question)
+            HumanMessage(
+                content="What is 125 * 37?"
+            )
         ]
     )
 
-    print("\nCONTENT:")
+    print("\nModel response:")
     print(response.content)
 
-    print("\nTOOL CALLS:")
+    print("\nTool calls:")
     print(response.tool_calls)
+
+    assert isinstance(response, AIMessage)
+
+    assert response.tool_calls, (
+        "The model did not select the calculator tool."
+    )
+
+    calculator_calls = [
+        call
+        for call in response.tool_calls
+        if call["name"] == "calculator"
+    ]
+
+    assert calculator_calls, (
+        "The model did not select the calculator tool."
+    )
+
+    expression = calculator_calls[0]["args"]["expression"]
+
+    assert expression.replace(" ", "") == "125*37"

@@ -10,11 +10,12 @@ try:
     result = graph.invoke(
         {
             "messages": [
-                HumanMessage(
-                    content="What is 125 * 37?"
-                )
+               HumanMessage(
+                    content="What is the capital of France?"
+        )
             ],
-            "tool_call_count": 0
+            "tool_call_count": 0,
+            "no_relevant_context": False
         }
     )
 

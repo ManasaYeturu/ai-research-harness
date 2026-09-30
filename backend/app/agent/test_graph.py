@@ -1,15 +1,21 @@
+from langchain_core.messages import HumanMessage
+
 from backend.app.agent.graph import build_graph
 
 
-graph = build_graph()
+def test_basic_agent():
+    graph = build_graph()
 
-result = graph.invoke({
-    "question": "What is PostgreSQL?",
-    "answer": ""
-})
+    result = graph.invoke(
+        {
+            "messages": [
+                HumanMessage(
+                    content="What is PostgreSQL?"
+                )
+            ],
+            "tool_call_count": 0,
+            "no_relevant_context": False
+        }
+    )
 
-print("\nQUESTION:")
-print(result["question"])
-
-print("\nANSWER:")
-print(result["answer"])
+    assert result["messages"]

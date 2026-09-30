@@ -29,7 +29,7 @@ def test_execution_limit_stops_agent():
     print(f"tool_call_requested: {bool(message.tool_calls)}")
     print(f"graph_decision: {result}")
 
-    assert result == "__end__"
+    assert result == "final"
 
     print("Execution limit test PASSED")
 
