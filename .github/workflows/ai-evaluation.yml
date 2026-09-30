@@ -180,7 +180,7 @@ jobs:
       # 13. Run automated tests
       # --------------------------------------------------
 
-           - name: Run automated tests
+      - name: Run automated tests
         run: |
           python -m pytest -q
 
