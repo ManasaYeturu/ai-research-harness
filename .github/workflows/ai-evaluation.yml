@@ -1,0 +1,369 @@
+name: AI Evaluation
+
+on:
+  push:
+    branches:
+      - main
+      - master
+
+  pull_request:
+    branches:
+      - main
+      - master
+
+jobs:
+  test-and-evaluate:
+
+    runs-on: ubuntu-latest
+
+    services:
+
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: ai_research_harness
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: 1620
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres -d ai_research_harness"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
+      qdrant:
+        image: qdrant/qdrant:latest
+        ports:
+          - 6333:6333
+          - 6334:6334
+
+    steps:
+
+      # --------------------------------------------------
+      # 1. Checkout repository
+      # --------------------------------------------------
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # --------------------------------------------------
+      # 2. Setup Python
+      # --------------------------------------------------
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      # --------------------------------------------------
+      # 3. Install Ollama
+      # --------------------------------------------------
+
+      - name: Install Ollama
+        run: |
+          curl -fsSL https://ollama.com/install.sh | sh
+
+      # --------------------------------------------------
+      # 4. Start Ollama
+      # --------------------------------------------------
+
+      - name: Start Ollama
+        run: |
+          ollama serve > ollama.log 2>&1 &
+
+          for i in {1..30}; do
+            if curl --fail --silent http://localhost:11434/api/tags > /dev/null; then
+              echo "Ollama is ready"
+              exit 0
+            fi
+
+            echo "Waiting for Ollama..."
+            sleep 2
+          done
+
+          echo "Ollama did not become ready"
+          cat ollama.log
+          exit 1
+
+      # --------------------------------------------------
+      # 5. Pull required Ollama models
+      # --------------------------------------------------
+
+      - name: Pull Ollama models
+        run: |
+          ollama pull llama3.2:3b
+          ollama pull nomic-embed-text
+
+      # --------------------------------------------------
+      # 6. Verify Ollama
+      # --------------------------------------------------
+
+      - name: Verify Ollama
+        run: |
+          ollama list
+
+      # --------------------------------------------------
+      # 7. Upgrade pip
+      # --------------------------------------------------
+
+      - name: Upgrade pip
+        run: |
+          python -m pip install --upgrade pip
+
+      # --------------------------------------------------
+      # 8. Install backend dependencies
+      # --------------------------------------------------
+
+      - name: Install backend dependencies
+        run: |
+          pip install -r backend/requirements.txt
+
+      # --------------------------------------------------
+      # 9. Initialize PostgreSQL schema
+      # --------------------------------------------------
+
+      - name: Initialize PostgreSQL schema
+        env:
+          PGPASSWORD: 1620
+        run: |
+          psql \
+            -h localhost \
+            -p 5432 \
+            -U postgres \
+            -d ai_research_harness \
+            -f backend/app/database/schema.sql
+
+      # --------------------------------------------------
+      # 10. Verify PostgreSQL
+      # --------------------------------------------------
+
+      - name: Verify PostgreSQL
+        env:
+          PGPASSWORD: 1620
+        run: |
+          psql \
+            -h localhost \
+            -p 5432 \
+            -U postgres \
+            -d ai_research_harness \
+            -c "SELECT 1;"
+
+      # --------------------------------------------------
+      # 11. Wait for Qdrant
+      # --------------------------------------------------
+
+      - name: Verify Qdrant
+        run: |
+          for i in {1..30}; do
+            if curl --fail --silent http://localhost:6333/healthz > /dev/null; then
+              echo "Qdrant is ready"
+              exit 0
+            fi
+
+            echo "Waiting for Qdrant..."
+            sleep 2
+          done
+
+          echo "Qdrant did not become ready"
+          exit 1
+
+      # --------------------------------------------------
+      # 12. Index knowledge base
+      # --------------------------------------------------
+
+      - name: Index knowledge base
+        run: |
+          python -c "from backend.app.rag.indexer import index_document; result = index_document('knowledge/documents/postgres.md'); print(result)"
+
+      # --------------------------------------------------
+      # 13. Run automated tests
+      # --------------------------------------------------
+
+      - name: Run automated tests
+        run: |
+          python -m pytest -qname: AI Evaluation
+
+on:
+  push:
+    branches:
+      - main
+      - master
+
+  pull_request:
+    branches:
+      - main
+      - master
+
+jobs:
+  test-and-evaluate:
+
+    runs-on: ubuntu-latest
+
+    services:
+
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: ai_research_harness
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: 1620
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres -d ai_research_harness"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
+      qdrant:
+        image: qdrant/qdrant:latest
+        ports:
+          - 6333:6333
+          - 6334:6334
+
+    steps:
+
+      # --------------------------------------------------
+      # 1. Checkout repository
+      # --------------------------------------------------
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # --------------------------------------------------
+      # 2. Setup Python
+      # --------------------------------------------------
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      # --------------------------------------------------
+      # 3. Install Ollama
+      # --------------------------------------------------
+
+      - name: Install Ollama
+        run: |
+          curl -fsSL https://ollama.com/install.sh | sh
+
+      # --------------------------------------------------
+      # 4. Start Ollama
+      # --------------------------------------------------
+
+      - name: Start Ollama
+        run: |
+          ollama serve > ollama.log 2>&1 &
+
+          for i in {1..30}; do
+            if curl --fail --silent http://localhost:11434/api/tags > /dev/null; then
+              echo "Ollama is ready"
+              exit 0
+            fi
+
+            echo "Waiting for Ollama..."
+            sleep 2
+          done
+
+          echo "Ollama did not become ready"
+          cat ollama.log
+          exit 1
+
+      # --------------------------------------------------
+      # 5. Pull required Ollama models
+      # --------------------------------------------------
+
+      - name: Pull Ollama models
+        run: |
+          ollama pull llama3.2:3b
+          ollama pull nomic-embed-text
+
+      # --------------------------------------------------
+      # 6. Verify Ollama
+      # --------------------------------------------------
+
+      - name: Verify Ollama
+        run: |
+          ollama list
+
+      # --------------------------------------------------
+      # 7. Upgrade pip
+      # --------------------------------------------------
+
+      - name: Upgrade pip
+        run: |
+          python -m pip install --upgrade pip
+
+      # --------------------------------------------------
+      # 8. Install backend dependencies
+      # --------------------------------------------------
+
+      - name: Install backend dependencies
+        run: |
+          pip install -r backend/requirements.txt
+
+      # --------------------------------------------------
+      # 9. Initialize PostgreSQL schema
+      # --------------------------------------------------
+
+      - name: Initialize PostgreSQL schema
+        env:
+          PGPASSWORD: 1620
+        run: |
+          psql \
+            -h localhost \
+            -p 5432 \
+            -U postgres \
+            -d ai_research_harness \
+            -f backend/app/database/schema.sql
+
+      # --------------------------------------------------
+      # 10. Verify PostgreSQL
+      # --------------------------------------------------
+
+      - name: Verify PostgreSQL
+        env:
+          PGPASSWORD: 1620
+        run: |
+          psql \
+            -h localhost \
+            -p 5432 \
+            -U postgres \
+            -d ai_research_harness \
+            -c "SELECT 1;"
+
+      # --------------------------------------------------
+      # 11. Wait for Qdrant
+      # --------------------------------------------------
+
+      - name: Verify Qdrant
+        run: |
+          for i in {1..30}; do
+            if curl --fail --silent http://localhost:6333/healthz > /dev/null; then
+              echo "Qdrant is ready"
+              exit 0
+            fi
+
+            echo "Waiting for Qdrant..."
+            sleep 2
+          done
+
+          echo "Qdrant did not become ready"
+          exit 1
+
+      # --------------------------------------------------
+      # 12. Index knowledge base
+      # --------------------------------------------------
+
+      - name: Index knowledge base
+        run: |
+          python -c "from backend.app.rag.indexer import index_document; result = index_document('knowledge/documents/postgres.md'); print(result)"
+
+      # --------------------------------------------------
+      # 13. Run automated tests
+      # --------------------------------------------------
+
+      - name: Run automated tests
+        run: |
+          python -m pytest -q
